@@ -55,6 +55,9 @@ public class Main
         setContentView (lv);
         inflater = LayoutInflater.from (this);
         adapter = new ContactsAdapter (null);
+
+        lv.addHeaderView (inflater.inflate (R.layout.header, lv, false));
+
         lv.setAdapter (adapter);
 
         getSupportLoaderManager ().initLoader (0, null, this);
@@ -114,7 +117,7 @@ public class Main
                 stream.close ();
             } catch (Exception e) {
                 Log.d (LOGTAG, String.format (Locale.ENGLISH, "%s: %s", name, e.getMessage ()));
-            } 
+            }
 
             Picasso
               .with (Main.this)
