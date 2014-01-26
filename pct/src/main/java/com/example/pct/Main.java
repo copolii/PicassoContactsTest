@@ -1,6 +1,5 @@
 package com.example.pct;
 
-import android.app.ListActivity;
 import android.content.ContentUris;
 import android.content.Context;
 import android.database.Cursor;
@@ -12,10 +11,12 @@ import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v4.widget.CursorAdapter;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -37,12 +38,17 @@ public class Main
     private static final String[] PROJECTION = {
                                                  ContactsContract.Contacts._ID,
                                                  ContactsContract.Contacts.DISPLAY_NAME,
-                                                 ContactsContract.Contacts.LOOKUP_KEY
+                                                 ContactsContract.Contacts.LOOKUP_KEY,
+                                                 ContactsContract.Contacts.PHOTO_URI,
+                                                 ContactsContract.Contacts.PHOTO_THUMBNAIL_URI
+
     };
 
     private static final int IDX_RAW  = 0;
     private static final int IDX_NAME = 1;
     private static final int IDX_LUK  = 2;
+    private static final int IDX_HIGHRES_URI  = 3;
+    private static final int IDX_THUMBNAIL_URI  = 4;
 
     private LayoutInflater inflater;
     private CursorAdapter adapter;
@@ -56,8 +62,6 @@ public class Main
         inflater = LayoutInflater.from (this);
         adapter = new ContactsAdapter (null);
 
-        lv.addHeaderView (inflater.inflate (R.layout.header, lv, false));
-
         lv.setAdapter (adapter);
 
         getSupportLoaderManager ().initLoader (0, null, this);
@@ -67,7 +71,7 @@ public class Main
     public Loader<Cursor> onCreateLoader (final int i, final Bundle bundle) {
         return new CursorLoader (this,
                                  ContactsContract.Contacts.CONTENT_URI, PROJECTION, null, null,
-                                 null);
+                                 ContactsContract.Contacts.DISPLAY_NAME + " ASC");
     }
 
     @Override
@@ -107,43 +111,59 @@ public class Main
             final Uri lookupUri = Uri.withAppendedPath (ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey);
             final Uri contactUri = ContentUris.withAppendedId (ContactsContract.Contacts.CONTENT_URI, raw);
 
-            Log.d (LOGTAG, String.format (Locale.ENGLISH, "Name: %s Lookup: %s Uri: %s", name, lookupUri, contactUri));
-
-            try {
-                final InputStream stream = ContactsContract.Contacts.openContactPhotoInputStream (getContentResolver (),
-                                                                                        contactUri);
-
-                Log.d (LOGTAG, String.format (Locale.ENGLISH, "Name: %s Stream: %s", name, stream));
-                stream.close ();
-            } catch (Exception e) {
-                Log.d (LOGTAG, String.format (Locale.ENGLISH, "%s: %s", name, e.getMessage ()));
-            }
-
             Picasso
               .with (Main.this)
               .load (lookupUri)
               .placeholder (R.drawable.ic_social_person)
               .error (R.drawable.ic_alerts_and_states_warning)
-              .into (tag.photo_luk);
+              .into (tag.luk);
 
             Picasso
               .with (Main.this)
               .load (contactUri)
               .placeholder (R.drawable.ic_social_person)
               .error (R.drawable.ic_alerts_and_states_warning)
-              .into (tag.photo_raw);
+              .into (tag.raw);
+
+            picassoThis (tag.high, cursor, IDX_HIGHRES_URI);
+            picassoThis (tag.thumb, cursor, IDX_THUMBNAIL_URI);
+        }
+
+        private void picassoThis (final ImageView img, final Cursor cursor, final int index) {
+            final String uriStr = cursor.getString (index);
+
+            if (TextUtils.isEmpty (uriStr)) {
+                Picasso
+                  .with (Main.this)
+                  .load (R.drawable.ic_alerts_and_states_warning)
+                  .into (img);
+                return;
+            }
+
+            final Uri photoUri =  Uri.parse (uriStr);
+
+            Picasso
+              .with (Main.this)
+              .load (photoUri)
+              .placeholder (R.drawable.ic_social_person)
+              .error (R.drawable.ic_alerts_and_states_warning)
+              .into (img);
         }
     }
 
     private static class Tag {
         final TextView  name;
-        final ImageView photo_luk;
-        final ImageView photo_raw;
+        final ImageView luk;
+        final ImageView raw;
+        final ImageView high;
+        final ImageView thumb;
 
         Tag (final View v) {
             name = (TextView) v.findViewById (android.R.id.title);
-            photo_luk = (ImageView) v.findViewById (android.R.id.icon1);
-            photo_raw = (ImageView) v.findViewById (android.R.id.icon2);
+            luk = (ImageView) v.findViewById (R.id.icon1);
+            raw = (ImageView) v.findViewById (R.id.icon2);
+            thumb = (ImageView) v.findViewById (R.id.icon3);
+            high = (ImageView) v.findViewById (R.id.icon4);
         }
     }
 }
